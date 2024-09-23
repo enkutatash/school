@@ -15,7 +15,7 @@ func main() {
 	}
 	route := gin.New()
 	route.Use(gin.Logger())
-	
+	routes.CommonRoutes(route)
 	routes.ParentRoute(route)
 	routes.StudentRoute(route)
 	routes.TeacherRoute(route)

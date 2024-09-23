@@ -30,13 +30,13 @@ func GenerateToken(email string, firstName string, uid string, lastname string,R
 		Uid:       uid,
 		Role:      Role,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Local().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
+			ExpiresAt: time.Now().Local().AddDate(1, 0, 0).Unix(), // Token expires in 24 hours
 		},
 	}
 
 	refreshClaim := &SignedDetails{
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Local().Add(time.Hour * 168).Unix(), // Refresh token expires in 7 days
+			ExpiresAt: time.Now().Local().AddDate(1, 0, 0).Unix(), // Refresh token expires in 7 days
 		},
 	}
 

@@ -12,4 +12,5 @@ type Assignment struct {
 	TeacherID 	*string             `json:"teacher" bson:"teacher"`
 	Deadline       time.Time             `json:"deadline" bson:"deadline"`
 	AssignmentFile []byte			  `json:"assignment_file" bson:"assignment_file"`
+	Description    string              `json:"description" bson:"description"`
 }

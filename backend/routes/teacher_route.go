@@ -26,7 +26,7 @@ func TeacherRoute(incomingRoute *gin.Engine) {
 		// remove student from section
 		teacherRoute.DELETE("/section/:section_id/student/:student_id", nil)
 	}
-	incomingRoute.GET("/club", nil)
-	incomingRoute.GET("/club/:id", nil)
-	incomingRoute.POST("/club/:id/apply", nil)
+	// incomingRoute.GET("/club", nil)
+	// incomingRoute.GET("/club/:id", nil)
+	// incomingRoute.POST("/club/:id/apply", nil)
 }
