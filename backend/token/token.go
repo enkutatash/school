@@ -1,18 +1,13 @@
 package token
 
+//  token refresh methos not implemeted
+
 import (
-	"context"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"schoolbackend/database"
 )
 
 type SignedDetails struct {
@@ -24,7 +19,6 @@ type SignedDetails struct {
 	jwt.StandardClaims
 }
 
-var userData *mongo.Collection = database.GetData(database.Client, "user")
 var Secret_key = os.Getenv("SECRET_KEY")
 
 func GenerateToken(email string, firstName string, uid string, lastname string,Role string) (signedToken string, refreshToken string, err error) {
@@ -36,13 +30,13 @@ func GenerateToken(email string, firstName string, uid string, lastname string,R
 		Uid:       uid,
 		Role:      Role,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Local().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
+			ExpiresAt: time.Now().Local().AddDate(1, 0, 0).Unix(), // Token expires in 24 hours
 		},
 	}
 
 	refreshClaim := &SignedDetails{
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Local().Add(time.Hour * 168).Unix(), // Refresh token expires in 7 days
+			ExpiresAt: time.Now().Local().AddDate(1, 0, 0).Unix(), // Refresh token expires in 7 days
 		},
 	}
 
@@ -82,27 +76,55 @@ func ValidateToken(signedtoken string) (claim *SignedDetails, msg string) {
 	return claim, msg
 }
 
-func UpdateAllToken(signedtoken string, signedrefreshtoken string, uid string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	var updateObj primitive.D
-	updateObj = append(updateObj, bson.E{Key: "token", Value: signedtoken})
-	updateObj = append(updateObj, bson.E{Key: "refresh_token", Value: signedrefreshtoken})
-	updated_at, _ := time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
-	updateObj = append(updateObj, bson.E{Key: "updated_at", Value: updated_at})
+// func RefreshToken(c *gin.Context) {
+// 	var request struct {
+// 		RefreshToken string `json:"refresh_token"`
+// 	}
+	
+// 	if err := c.ShouldBindJSON(&request); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+// 		return
+// 	}
 
-	upsert := true
-	filter := bson.M{"user_id": uid}
-	opt := options.UpdateOptions{
-		Upsert: &upsert,
-	}
+// 	// Validate the refresh token
+// 	claims, msg := ValidateToken(request.RefreshToken)
+// 	if msg != "" {
+// 		c.JSON(http.StatusUnauthorized, gin.H{"error": msg})
+// 		return
+// 	}
 
-	_, err := userData.UpdateOne(ctx, filter, bson.D{{
-		Key: "$set", Value: updateObj,
-	}}, &opt)
+// 	// Generate a new access token
+// 	newToken, newRefreshToken, err := GenerateToken(claims.Email, claims.FirstName, claims.Uid, claims.LastName, claims.Role)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate new tokens"})
+// 		return
+// 	}
 
-	defer cancel()
-	if err != nil {
-		log.Panic(err)
-	}
+// 	c.JSON(http.StatusOK, gin.H{"access_token": newToken, "refresh_token": newRefreshToken})
+// }
 
-}
+
+// func UpdateAllToken(signedtoken string, signedrefreshtoken string, uid string) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+// 	var updateObj primitive.D
+// 	updateObj = append(updateObj, bson.E{Key: "token", Value: signedtoken})
+// 	updateObj = append(updateObj, bson.E{Key: "refresh_token", Value: signedrefreshtoken})
+// 	updated_at, _ := time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+// 	updateObj = append(updateObj, bson.E{Key: "updated_at", Value: updated_at})
+
+// 	upsert := true
+// 	filter := bson.M{"user_id": uid}
+// 	opt := options.UpdateOptions{
+// 		Upsert: &upsert,
+// 	}
+
+// 	_, err := userData.UpdateOne(ctx, filter, bson.D{{
+// 		Key: "$set", Value: updateObj,
+// 	}}, &opt)
+
+// 	defer cancel()
+// 	if err != nil {
+// 		log.Panic(err)
+// 	}
+
+// }

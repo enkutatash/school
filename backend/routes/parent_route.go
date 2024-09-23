@@ -15,5 +15,4 @@ func ParentRoute(incomingRoute *gin.Engine) {
 		parentRoute.GET("/child_mark", nil)
 		parentRoute.GET("/child_home_teacher", nil)
 	}
-
 }
