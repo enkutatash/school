@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	schoolerrors "schoolbackend/errors"
 	"schoolbackend/token"
@@ -10,6 +11,7 @@ import (
 )
 func AuthenticateTeacher() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		fmt.Println("Teacher Middleware")
 		clientToken := c.Request.Header.Get("Authorization")
 		if clientToken ==""{
 			c.JSON(http.StatusUnauthorized, gin.H{"error": schoolerrors.ErrorUnauthorizedAccess.Message})			
@@ -36,6 +38,7 @@ func AuthenticateTeacher() gin.HandlerFunc {
             c.Abort()
             return
         }
+		c.Set("claims", claims)
 		c.Next()
     }
 }

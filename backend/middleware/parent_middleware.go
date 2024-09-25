@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	
+	"fmt"
 	"net/http"
 	schoolerrors "schoolbackend/errors"
 	"schoolbackend/token"
@@ -11,6 +11,7 @@ import (
 )
 func AuthenticateParent() gin.HandlerFunc {
     return func(c *gin.Context) {
+        fmt.Println("Parent Middleware")
 		clientToken := c.Request.Header.Get("Authorization")
 		if clientToken ==""{
 			c.JSON(http.StatusUnauthorized, gin.H{"error": schoolerrors.ErrorUnauthorizedAccess.Message})			

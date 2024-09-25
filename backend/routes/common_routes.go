@@ -13,13 +13,21 @@ var (
 )
 
 func CommonRoutes(incomingRoute *gin.Engine) {
+	// Club-related routes
+incomingRoute.GET("/clubs", app.GetClubs)  // List of clubs
+incomingRoute.GET("/club/:club_id", app.GetClubByID)  // Get specific club by ID
+incomingRoute.POST("/club/:club_id/apply", app.ApplyForClub)  // Apply for a club
 
-	incomingRoute.GET("/club", nil)
-	incomingRoute.GET("/club/:id", nil)
-	incomingRoute.POST("/club/:id/apply", nil)
+// Distinguishing application management with more specific routes
+incomingRoute.PUT("/club/:club_id/application/:student_id/accept", app.AcceptClubRequest)  // Accept a student's application
+incomingRoute.PUT("/club/:club_id/application/:student_id/reject", app.RejectClubRequest)  // Reject a student's application
+incomingRoute.GET("/club/:club_id/applications", app.GetClubApplications)  // Get all applications for a club
 
-	incomingRoute.POST("/register/student", app.RegisterStudent)
-	incomingRoute.POST("/register/teacher", app.RegisterTeacher)
-	incomingRoute.POST("/login/student", app.LoginStudent)
-	incomingRoute.POST("/login/teacher", app.LoginTeacher)
+// Registration and login routes
+incomingRoute.POST("/register/student", app.RegisterStudent)
+incomingRoute.POST("/register/teacher", app.RegisterTeacher)
+incomingRoute.POST("/login/student", app.LoginStudent)
+incomingRoute.POST("/login/teacher", app.LoginTeacher)
+
+	
 }

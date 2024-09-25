@@ -7,8 +7,8 @@ import (
 )
 
 func StudentRoute(incomingRoute *gin.Engine) {
-	incomingRoute.Use(middleware.AuthenticateStudent())
 	studentRoute := incomingRoute.Group("/student")
+	studentRoute.Use(middleware.AuthenticateStudent())
 	{
 
 		studentRoute.GET("/student/mygrade",nil)

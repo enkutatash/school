@@ -7,8 +7,8 @@ import (
 )
 
 func ParentRoute(incomingRoute *gin.Engine) {
-	incomingRoute.Use(middleware.AuthenticateParent())
 	parentRoute := incomingRoute.Group("/parent")
+	parentRoute.Use(middleware.AuthenticateParent())
 	{
 		parentRoute.GET("/child_attendance", nil)
 		parentRoute.GET("/child_discipline_board", nil)

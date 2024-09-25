@@ -20,4 +20,5 @@ type Student struct {
 	SectionID    *string            `json:"section" bson:"section"`
 	Clubs        []string           `json:"clubs" bson:"clubs"`
 	ClassRep     bool               `json:"class_rep" bson:"class_rep"`
+	
 }
