@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"schoolbackend/models"
 
 	"log"
@@ -19,6 +20,7 @@ var (
 	Clubs = GetData(Client, "clubs")
 	SectionsData = GetData(Client, "sections")
 	SubjectsData = GetData(Client,"subjects")
+	GradeReportData = GetData(Client,"gradereport")
 	
 )
 
@@ -107,6 +109,20 @@ func GetStudentByID(studentID string)(models.Student,error){
 	return student,nil
 }
 
+func GetTeacherByID(teacherID string)(models.Teacher,error){
+	teacherid, err := primitive.ObjectIDFromHex(teacherID)
+	if err != nil {
+		return models.Teacher{},err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var teacher models.Teacher
+	err = RegisteredTeacher.FindOne(ctx, bson.M{"_id": teacherid}).Decode(&teacher)
+	if err != nil {
+		return models.Teacher{},err
+	}
+	return teacher,nil
+}
 func ValidSubject(subjectID string) bool{
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -121,5 +137,47 @@ func ValidSubject(subjectID string) bool{
 	}
 
 	return count > 0
+}
+
+func GetSubjectByID(subjectID string) (*models.Subject,error){
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	subjectid ,err := primitive.ObjectIDFromHex(subjectID)
+	if err != nil {
+		return nil,err
+	}
+	var subject models.Subject
+	err = SubjectsData.FindOne(ctx, bson.M{"_id": subjectid}).Decode(&subject)
+	if err != nil {
+		
+		return nil,err
+	}
+
+	return &subject,nil
+
+}
+
+func ValidTeacherToSection(sectionID string,teacherID string) (*string ,error){
+	sectionid, err := primitive.ObjectIDFromHex(sectionID)
+	if err != nil {
+		return nil,err
+	}
+	
+	filter := bson.M{
+		"_id": sectionid,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var section models.Section
+	err = SectionsData.FindOne(ctx, filter).Decode(&section)
+	if err != nil {
+		return nil,err
+	}
+	for _, teacher := range section.Teachers {
+		if teacher.TeacherID == teacherID {
+			return &teacher.SubjectID,nil
+		}
+	}
+	return nil, errors.New("teacher not found in section")
 
 }

@@ -5,8 +5,6 @@ import (
 	"schoolbackend/database"
 	"schoolbackend/models"
 	"time"
-
-
 )
 
 type TeacherUseCase interface {
@@ -35,21 +33,94 @@ type TeacherUseCase interface {
 
 	AssignTeacher(subjectID string, TeacherID string, sectionID string) error
 	UnAssignTeacher(TeacherID string, sectionID string) error
-	AddCoursesToSection(subjectsID []string,sectionID string) error
+	AddCoursesToSection(subjectsID []string, sectionID string) error
+
+	// teacher of the section
+
+	NewAssessment(assessment models.AssessmentType, sectionID string, teacherID string) error
+	GetSectionResult(sectionID string, subjectID string) (*map[string][]models.AssessmentType, error)
+	UpdateSectionResult(sectionID string, studentID string, assessment_id string, assessmentValue float64,teacherID string) error
 }
 
 type TeacherUseCaseSample struct{}
 
-func (t *TeacherUseCaseSample) AddCoursesToSection(subjectsID []string,sectionID string) error {
-	for _,id := range subjectsID{
+// UpdateSectionResult implements TeacherUseCase.
+func (t *TeacherUseCaseSample) UpdateSectionResult(sectionID string, studentID string, assessment_id string, assessmentValue float64,teacherID string) error {
+	validSection := database.CheckSection(sectionID)
+	if !validSection {
+		return errors.New("invalid section id")
+	}
+
+	validStudent := database.CheckStudent(studentID)
+	if !validStudent {
+		return errors.New("invalid student id")
+	}
+
+	validStudent = database.CheckSectionRep(sectionID,studentID)
+	if !validStudent{
+		return errors.New("student is not in this class")
+	}
+
+	subjectID, err := database.ValidTeacherToSection(sectionID, teacherID)
+	if err != nil {
+		return err
+	}
+	err = database.UpdateSectionResult( sectionID,studentID, assessment_id, assessmentValue,*subjectID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetSectionResult implements TeacherUseCase.
+func (t *TeacherUseCaseSample) GetSectionResult(sectionID string, teacherID string) (*map[string][]models.AssessmentType, error) {
+	validSection := database.CheckSection(sectionID)
+	if !validSection {
+		return nil, errors.New("invalid section id")
+	}
+
+	subjectID, err := database.ValidTeacherToSection(sectionID, teacherID)
+	if err != nil {
+		return nil, err
+	}
+	report, err := database.GetStudentsGradeReport(sectionID, *subjectID)
+	if err != nil {
+		return nil, err
+	}
+	return &report, nil
+
+}
+
+// NewAssessment implements TeacherUseCase.
+func (t *TeacherUseCaseSample) NewAssessment(assessment models.AssessmentType, sectionID string, teacherID string) error {
+	validSection := database.CheckSection(sectionID)
+	if !validSection {
+		return errors.New("invalid section id")
+	}
+
+	subjectID, err := database.ValidTeacherToSection(sectionID, teacherID)
+	if err != nil {
+		return err
+	}
+
+	err = database.NewAssessment(assessment, sectionID, *subjectID)
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+func (t *TeacherUseCaseSample) AddCoursesToSection(subjectsID []string, sectionID string) error {
+	for _, id := range subjectsID {
 		valid := database.ValidSubject(id)
-		if !valid{
+		if !valid {
 			return errors.New("invalid Subject id")
 		}
 
-		err := database.AddCourse(id,sectionID)
+		err := database.AddCourse(id, sectionID)
 
-		if err != nil{
+		if err != nil {
 			return err
 		}
 	}
@@ -65,13 +136,14 @@ func (t *TeacherUseCaseSample) UnAssignTeacher(TeacherID string, sectionID strin
 	if !checkSection {
 		return errors.New("invalid section id")
 	}
-	err := database.UnAssignTeacher(sectionID,TeacherID)
+	err := database.UnAssignTeacher(sectionID, TeacherID)
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
+
 // AssignTeacher implements TeacherUseCase.
 func (t *TeacherUseCaseSample) AssignTeacher(subjectID string, TeacherID string, sectionID string) error {
 	checkSubject := database.ValidSubject(subjectID)
@@ -82,12 +154,12 @@ func (t *TeacherUseCaseSample) AssignTeacher(subjectID string, TeacherID string,
 	if !checkTeacher {
 		return errors.New("invalid teacher id")
 	}
-	sectionData,err := database.GetSectionByID(sectionID)
+	sectionData, err := database.GetSectionByID(sectionID)
 	if err != nil {
 		return errors.New("invalid section id")
 	}
-	for _,subject := range sectionData.Subjects{
-		if subject == subjectID{
+	for _, subject := range sectionData.Subjects {
+		if subject == subjectID {
 			err := database.AssignTeacher(subjectID, TeacherID, sectionID)
 			// add if the id of the subject is same with the teacher next not implemented
 			if err != nil {

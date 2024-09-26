@@ -31,11 +31,48 @@ type CommonUsecases interface {
 	RejectRequest(studentID string, clubID string) error
 	GetClubApplications(clubID string) ([]models.Student, error)
 	SendNotification(notification models.Notification) error
-	
+
+	// section
+	GetAllSections() ([]models.Section, error)
+	GetSectionStudents(sectionID string) ([]models.Student, error)
+	GetSectionTeachers(sectionID string) (map[string]models.Teacher, error)
 }
 type UsecaseSample struct{}
 
+// GetAllSections implements CommonUsecases.
+func (u *UsecaseSample) GetAllSections() ([]models.Section, error) {
+	sections, err := database.GetAllSections()
+	if err != nil {
+		return nil, err
+	}
+	return sections, nil
+}
 
+// GetSectionStudents implements CommonUsecases.
+func (u *UsecaseSample) GetSectionStudents(sectionID string) ([]models.Student, error) {
+	checkSection:= database.CheckSection(sectionID)
+	if !checkSection {
+		return nil, errors.New("section not found")
+	}
+	students, err := database.GetSectionStudents(sectionID)
+	if err != nil {
+		return nil, err
+	}
+	return students, nil
+}
+
+// GetSectionTeachers implements CommonUsecases.
+func (u *UsecaseSample) GetSectionTeachers(sectionID string) (map[string]models.Teacher, error) {
+	checkSection:= database.CheckSection(sectionID)
+	if !checkSection {
+		return nil, errors.New("section not found")
+	}
+	teacher, err := database.GetSectionTeachers(sectionID)
+	if err != nil {
+		return nil, err
+	}
+	return *teacher, nil
+}
 
 // AcceptRequest implements CommonUsecases.
 func (u *UsecaseSample) AcceptRequest(studentID string, clubID string) error {

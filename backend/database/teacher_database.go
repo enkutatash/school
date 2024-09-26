@@ -3,11 +3,14 @@ package database
 import (
 	"context"
 	"errors"
+	"fmt"
+
 	"schoolbackend/models"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func UnAssignTeacher(sectionID string, teacherID string) error {
@@ -242,4 +245,225 @@ func AddCourse(subjectID string,sectionID string) error{
 	}
 	
 	return nil
+}
+
+func NewAssessment(assessment models.AssessmentType, sectionID string, subjectID string) error {
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    
+    sectionid, err := primitive.ObjectIDFromHex(sectionID)
+    if err != nil {
+        return err
+    }
+
+ 
+    var section models.Section
+    err = SectionsData.FindOne(ctx, bson.M{"_id": sectionid}).Decode(&section)
+    if err != nil {
+        return err
+    }
+
+    
+    subjectFound := false
+
+   
+    for i, subject := range section.Assessments {
+        if subject.SubjectID == subjectID {
+            section.Assessments[i].Assessment = append(section.Assessments[i].Assessment, assessment)
+            subjectFound = true
+            break
+        }
+    }
+
+    if !subjectFound {
+        var newSubjectAssessment models.SubjectAssessment
+        newSubjectAssessment.SubjectID = subjectID
+        newSubjectAssessment.Assessment = append(newSubjectAssessment.Assessment, assessment)
+
+       
+        section.Assessments = append(section.Assessments, newSubjectAssessment)
+    }
+
+    _, err = SectionsData.UpdateOne(
+        ctx,
+        bson.M{"_id": sectionid},
+        bson.M{"$set": bson.M{"assessments": section.Assessments}},
+    )
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+
+func GetStudentsGradeReport(sectionID string,subjectID string)(map[string][]models.AssessmentType,error){
+    fmt.Println("on db")
+	students ,err := GetSectionStudents(sectionID)
+	if err != nil {
+		return nil,err
+	}
+	fmt.Println("get students")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	gradeReport := make(map[string][]models.AssessmentType)
+	for _,student := range students {
+		var result models.GradeReport
+		err := GradeReportData.FindOne(ctx,bson.M{"student_id":student.StudentID.Hex()}).Decode(&result)
+		if err != nil {
+			return nil,err
+		}
+		gradeReport[student.StudentID.Hex()] = make([]models.AssessmentType, 0)
+		for _,subject := range result.Result {
+			if subject.SubjectID == subjectID {
+				gradeReport[student.StudentID.Hex()] = subject.Assessment
+				break
+		}
+
+	}
+}
+return gradeReport,nil
+
+}
+func UpdateSectionResult(sectionID string, studentID string, assessmentID string, assessmentValue float64, subjectID string) error {
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    // Convert IDs to ObjectID
+    studentIDObj, err := primitive.ObjectIDFromHex(studentID)
+    if err != nil {
+        return err
+    }
+    assessmentIDObj, err := primitive.ObjectIDFromHex(assessmentID)
+    if err != nil {
+        return err
+    }
+
+    // Find the Grade Report for the student
+    var result models.GradeReport
+    err = GradeReportData.FindOne(ctx, bson.M{"student_id": studentID}).Decode(&result)
+    if err != nil {
+        // If no report exists for the student, we need to create one
+        if err == mongo.ErrNoDocuments {
+            // Create new subject assessment
+            newAssessment := models.AssessmentType{
+                AssessmentTypeID: assessmentIDObj,
+                AssessmentValue:  assessmentValue,
+            }
+
+            // Create a new SubjectAssessment
+            newSubject := models.SubjectAssessment{
+                SubjectID: subjectID,
+                Assessment: []models.AssessmentType{newAssessment},
+            }
+
+            // Create new GradeReport
+            newGradeReport := models.GradeReport{
+                StudentID: studentID,
+                Result:    []models.SubjectAssessment{newSubject},
+            }
+
+            // Insert the new GradeReport into the database
+            _, err := GradeReportData.InsertOne(ctx, newGradeReport)
+            if err != nil {
+                return err
+            }
+            return nil // Successfully created new report
+        }
+        return err
+    }
+
+    // Flag to check if the assessment already exists
+    assessmentFound := false
+
+    // Loop through the subjects to find the one we need to update
+    for i, subject := range result.Result {
+        if subject.SubjectID == subjectID {
+            for j, assessment := range subject.Assessment {
+                if assessment.AssessmentTypeID == assessmentIDObj {
+                    // Update the assessment value if it already exists
+                    result.Result[i].Assessment[j].AssessmentValue = assessmentValue
+                    assessmentFound = true
+                    break
+                }
+            }
+            // If assessment not found, create a new one
+            if !assessmentFound {
+                newAssessment := models.AssessmentType{
+                    AssessmentTypeID: assessmentIDObj,
+                    AssessmentValue:  assessmentValue,
+                }
+                result.Result[i].Assessment = append(result.Result[i].Assessment, newAssessment)
+            }
+
+            // Update the GradeReport in the database
+            _, err = GradeReportData.UpdateOne(ctx,
+                bson.M{"student_id": studentIDObj.Hex()},
+                bson.M{"$set": bson.M{"subjects_result": result.Result}})
+            if err != nil {
+                return err
+            }
+            return nil // Successfully updated or added
+        }
+    }
+
+    // If we reach here, the subject was not found, so we create a new subject entry
+	fmt.Println("subject not found")
+    newAssessment := models.AssessmentType{
+        AssessmentTypeID: assessmentIDObj,
+        AssessmentValue:  assessmentValue,
+    }
+
+    newSubject := models.SubjectAssessment{
+        SubjectID: subjectID,
+        Assessment: []models.AssessmentType{newAssessment},
+    }
+
+    // Add the new subject to the existing GradeReport
+    result.Result = append(result.Result, newSubject)
+
+    // Update the GradeReport in the database
+    _, err = GradeReportData.UpdateOne(ctx,
+        bson.M{"student_id": studentIDObj.Hex()},
+        bson.M{"$set": bson.M{"subjects_result": result.Result}})
+    if err != nil {
+		fmt.Println("error",err.Error())
+        return err
+    }
+
+    return nil // Successfully added new subject
+}
+
+
+
+func GetAssessmentByID(sectionID string, assessmentID string) (*models.AssessmentType, error) {
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    // Convert sectionID to ObjectID
+    sectionid, err := primitive.ObjectIDFromHex(sectionID)
+    if err != nil {
+        return nil, err
+    }
+
+    // Find the section document
+    var section models.Section
+    err = SectionsData.FindOne(ctx, bson.M{"_id": sectionid}).Decode(&section)
+    if err != nil {
+        return nil, err
+    }
+
+    // Loop through the assessments to find the specific assessment
+    for _, subjectAssessment := range section.Assessments {
+        for _, assessment := range subjectAssessment.Assessment {
+            // Assuming assessment has an ID field (update this to match your AssessmentType struct)
+            if assessment.AssessmentTypeID.Hex() == assessmentID { // Change ID to the correct field name
+                return &assessment, nil
+            }
+        }
+    }
+
+    // If the assessment is not found, return an error
+    return nil, errors.New("assessment not found")
 }

@@ -11,6 +11,7 @@ type Section struct {
 	Students      []string           `json:"students" bson:"students"`
 	Teachers      []TeacherMap       `json:"teachers" bson:"teachers"`
 	Subjects      []string           `json:"subjects" bson:"subjects"`
+	Assessments []SubjectAssessment `json:"assessments" bson:"assessments"`
 }
 
 type TeacherMap struct {

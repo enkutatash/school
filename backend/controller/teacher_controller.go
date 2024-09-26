@@ -1,6 +1,7 @@
 package controller
 
 import (
+	
 	"net/http"
 	"schoolbackend/models"
 	"schoolbackend/token"
@@ -26,8 +27,99 @@ type TeacherController interface {
 	AddCourses(c *gin.Context)
 	AssignTeacher(c *gin.Context)
 	UnAssignTeacher(c *gin.Context)
+
+	// related to grade
+	GetSectionResult(c *gin.Context)
+	NewAssessment(c *gin.Context)
+	UpdateSectionResult(c *gin.Context)
 }
 type TeacherControllerSample struct{}
+
+// NewAssessment implements TeacherController.
+func (t *TeacherControllerSample) NewAssessment(c *gin.Context) {
+	c.Header("Content-Type", "application/json")
+	sectionID := c.Param("section_id")
+	claim, err := c.Get("claims")
+	if !err {
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized access"})
+		return
+	}
+	if sectionID == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "section_id is required"})
+		return
+	}
+	var assessment models.AssessmentType
+	if er := c.BindJSON(&assessment); er != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid input format"})
+		return
+	}
+	assessment.AssessmentTypeID = primitive.NewObjectID()
+	er := TeacherService.NewAssessment(assessment, sectionID, claim.(*token.SignedDetails).Uid)
+	if er != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": er.Error()})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "Successfully added new assessment"})
+
+}
+
+// GetSectionResult implements TeacherController.
+func (t *TeacherControllerSample) GetSectionResult(c *gin.Context) {
+	c.Header("Content-Type", "application/json")
+	sectionID := c.Param("section_id")
+	claim, err := c.Get("claims")
+	if !err {
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized access"})
+		return
+	}
+	if sectionID == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "section_id is required"})
+		return
+	}
+
+	gradeReport, er := TeacherService.GetSectionResult(sectionID, claim.(*token.SignedDetails).Uid)
+	if er != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": er.Error()})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, gin.H{"grade_report": gradeReport})
+}
+
+// UpdateSectionResult implements TeacherController.
+func (t *TeacherControllerSample) UpdateSectionResult(c *gin.Context) {
+	
+	c.Header("Content-Type", "application/json")
+	sectionID := c.Param("section_id")
+	studentID := c.Param("student_id")
+	claim, err := c.Get("claims")
+	if !err {
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized access"})
+		return
+	}
+	if sectionID == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "section_id is required"})
+		return
+	}
+	if studentID == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "student_id is required"})
+		return
+	}
+	var assessment_id struct{
+		AssessmentID string `json:"assessment_id"`
+		AssessmentValue float64 `json:"assessment_value"`
+	}
+	if er := c.BindJSON(&assessment_id); er != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid input format"})
+		return
+	}
+	
+	er := TeacherService.UpdateSectionResult(sectionID, studentID, assessment_id.AssessmentID, assessment_id.AssessmentValue,claim.(*token.SignedDetails).Uid)
+	if er != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": er.Error()})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "Successfully updated students result"})
+}
 
 // AssignTeacher implements TeacherController.
 func (t *TeacherControllerSample) AssignTeacher(c *gin.Context) {
@@ -51,18 +143,18 @@ func (t *TeacherControllerSample) AssignTeacher(c *gin.Context) {
 		c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "only home teacher can assign teacher to this section"})
 		return
 	}
-	var RequestBody struct{
-		Subject string `json:"subject"`
+	var RequestBody struct {
+		Subject   string `json:"subject"`
 		TeacherId string `json:"teacher_id"`
 	}
 
-	if er := c.BindJSON(&RequestBody); er != nil{
+	if er := c.BindJSON(&RequestBody); er != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid input format"})
 		return
-	} 
+	}
 
-	er = TeacherService.AssignTeacher(RequestBody.Subject,RequestBody.TeacherId,sectionID)
-	if er != nil{
+	er = TeacherService.AssignTeacher(RequestBody.Subject, RequestBody.TeacherId, sectionID)
+	if er != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": er.Error()})
 		return
 	}
@@ -91,19 +183,19 @@ func (t *TeacherControllerSample) UnAssignTeacher(c *gin.Context) {
 		c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "only home teacher can assign teacher to this section"})
 		return
 	}
-	var RequestBody struct{
+	var RequestBody struct {
 		TeacherId string `json:"teacher_id"`
 	}
 
-	if er := c.BindJSON(&RequestBody); er != nil{
+	if er := c.BindJSON(&RequestBody); er != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid input format"})
 		return
-	} 
+	}
 
-	er = TeacherService.UnAssignTeacher(RequestBody.TeacherId,sectionID)
-	if er != nil{
+	er = TeacherService.UnAssignTeacher(RequestBody.TeacherId, sectionID)
+	if er != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": er.Error()})
-		return 
+		return
 	}
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Successfully unassign the teacher"})
 }
@@ -141,16 +233,12 @@ func (t *TeacherControllerSample) AddCourses(c *gin.Context) {
 		return
 	}
 
-	er = TeacherService.AddCoursesToSection(requestBody.CourseID,sectionID)
-	if er != nil{
+	er = TeacherService.AddCoursesToSection(requestBody.CourseID, sectionID)
+	if er != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": er.Error()})
 		return
 	}
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Successfully added courses to section"})
-
-
-
-
 
 }
 

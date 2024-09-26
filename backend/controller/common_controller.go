@@ -14,7 +14,6 @@ import (
 var (
 	validate = validator.New()
 	Service  usecase.CommonUsecases
-	
 )
 
 type CommonController interface {
@@ -24,16 +23,61 @@ type CommonController interface {
 	LoginStudent(c *gin.Context)
 	LoginTeacher(c *gin.Context)
 	LoginParent(c *gin.Context)
-	
+
 	GetClubs(c *gin.Context)
 	GetClubByID(c *gin.Context)
 	ApplyForClub(c *gin.Context)
 	AcceptClubRequest(c *gin.Context)
 	RejectClubRequest(c *gin.Context)
 	GetClubApplications(c *gin.Context)
+
+	GetAllSections(c *gin.Context)
+	GetSectionStudents(c *gin.Context)
+	GetSectionTeachers(c *gin.Context)
 }
 
 type CommonControllerSample struct{}
+
+// GetAllSections implements CommonController.
+func (*CommonControllerSample) GetAllSections(c *gin.Context) {
+	c.Header("Content-Type", "application/json")
+	sections, err := Service.GetAllSections()
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, sections)
+}
+// GetSectionTeachers implements CommonController.
+func (*CommonControllerSample) GetSectionTeachers(c *gin.Context) {
+	section_id := c.Param("section_id")
+	if section_id == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "section_id is required"})
+		return
+	}
+	students, err := Service.GetSectionTeachers(section_id)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, students)
+}
+
+
+// GetSectionStudents implements CommonController.
+func (*CommonControllerSample) GetSectionStudents(c *gin.Context) {
+	section_id := c.Param("section_id")
+	if section_id == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "section_id is required"})
+		return
+	}
+	students, err := Service.GetSectionStudents(section_id)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, students)
+}
 
 // AcceptClubRequest implements CommonController.
 func (*CommonControllerSample) AcceptClubRequest(c *gin.Context) {
@@ -53,9 +97,9 @@ func (*CommonControllerSample) AcceptClubRequest(c *gin.Context) {
 	clientToken = splitToken[1]
 
 	claim, _ := token.ValidateToken(clientToken)
-	
+
 	studentID := claim.Uid
-	clubData,err := Service.GetClubByID(clubID)
+	clubData, err := Service.GetClubByID(clubID)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -85,9 +129,9 @@ func (*CommonControllerSample) GetClubApplications(c *gin.Context) {
 	clientToken = splitToken[1]
 
 	claim, _ := token.ValidateToken(clientToken)
-	
+
 	studentID := claim.Uid
-	clubData,err := Service.GetClubByID(clubID)
+	clubData, err := Service.GetClubByID(clubID)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
@@ -96,7 +140,7 @@ func (*CommonControllerSample) GetClubApplications(c *gin.Context) {
 		c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "Only the club leader can view applications"})
 		return
 	}
-	applicants,err := Service.GetClubApplications(clubID)
+	applicants, err := Service.GetClubApplications(clubID)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -122,9 +166,9 @@ func (*CommonControllerSample) RejectClubRequest(c *gin.Context) {
 	clientToken = splitToken[1]
 
 	claim, _ := token.ValidateToken(clientToken)
-	
+
 	studentID := claim.Uid
-	clubData,err := Service.GetClubByID(clubID)
+	clubData, err := Service.GetClubByID(clubID)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -228,7 +272,7 @@ func (*CommonControllerSample) RegisterTeacher(c *gin.Context) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	err = Service.RegisterTeacher(teacher)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

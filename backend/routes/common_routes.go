@@ -29,5 +29,12 @@ incomingRoute.POST("/register/teacher", app.RegisterTeacher)
 incomingRoute.POST("/login/student", app.LoginStudent)
 incomingRoute.POST("/login/teacher", app.LoginTeacher)
 
+// get all sections
+incomingRoute.GET("/section", app.GetAllSections)
+// get students data of that section
+incomingRoute.GET("/section/:section_id/students", app.GetSectionStudents)
+//get teachers 
+incomingRoute.GET("/section/:section_id/teachers", app.GetSectionTeachers)
+
 	
 }

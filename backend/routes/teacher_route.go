@@ -20,10 +20,13 @@ func TeacherRoute(incomingRoute *gin.Engine) {
 		teacherRoute.POST("/found_club", teacherService.FoundClub)
 		teacherRoute.PUT("/:club_id/assign_lead", teacherService.AssignLead)
 
-		teacherRoute.GET("/grade/:grade/section/:section_id/grade", nil)
-		teacherRoute.PUT("/grade/:grade/section/:section_id/grade", nil)
-		teacherRoute.GET("/grade/:grade/section/:section_id/attendance", nil)
-		teacherRoute.PUT("/grade/:grade/section/:section_id/attendance", nil)
+		// get students data of that section
+		
+		teacherRoute.GET("/section/:section_id/result", teacherService.GetSectionResult)
+		teacherRoute.PUT("/section/:section_id/:subject_id/new_assessment", teacherService.NewAssessment)
+		teacherRoute.PUT("/section/:section_id/result/:student_id", teacherService.UpdateSectionResult)
+		teacherRoute.GET("/section/:section_id/attendance", nil)
+		teacherRoute.PUT("/section/:section_id/attendance", nil)
 		
 		teacherRoute.POST("/quiz", nil)
 		teacherRoute.PUT("/quiz/:quiz_id/:question_id", nil)
